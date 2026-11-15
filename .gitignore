@@ -1,0 +1,12 @@
+# Never publish the signing key. flow.keystore lets updates install over
+# earlier Flow versions; if it is lost, replaced, or leaked, users must
+# uninstall and reinstall, losing their flows.
+flow.keystore
+*.keystore
+*.jks
+
+# Build output — the release APK is attached to a GitHub Release, not
+# committed to the repo.
+build/
+*.apk
+*.idsig
