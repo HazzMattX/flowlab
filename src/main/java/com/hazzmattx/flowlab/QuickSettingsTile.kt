@@ -5,9 +5,8 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.widget.Toast
 
-/* Quick Settings tile: tapping runs the flow chosen in Flow's top menu
-   ("Choose Quick Settings tile flow", stored as qs_tile_flow). If no
-   flow is chosen, tapping opens Flow instead. */
+/* Tapping runs the flow chosen in Flow's top menu. If none is chosen,
+   tapping opens Flow instead. */
 class FlowTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()

@@ -4,9 +4,8 @@ import android.app.Activity
 import android.os.Bundle
 import android.widget.Toast
 
-/* Target of a pinned home-screen shortcut ("Add home-screen icon" in a
-   flow's card menu). Runs the flow and finishes immediately; it never
-   shows a UI of its own. Distinct from the widget and the QS tile. */
+/* Target of a pinned home-screen shortcut. Runs the flow and finishes
+   at once; it never shows a UI of its own. */
 class FlowShortcutActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

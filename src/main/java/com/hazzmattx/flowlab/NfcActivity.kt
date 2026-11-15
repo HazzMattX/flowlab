@@ -8,12 +8,9 @@ import android.os.Bundle
 import android.widget.Toast
 
 /* NFC tag tapped: runs enabled automations with the nfc_tag trigger.
-   A flow can bind to one tag by putting that tag's ID in its trigger
-   field; a blank trigger field means any tag runs it. No tag writing,
-   no tag registration UI: the tapped tag's ID is written to the Run
-   log, so it can be copied into a flow's trigger field to bind it.
-   Reached via the TAG_DISCOVERED intent-filter in the manifest, so the
-   system may show a chooser if another app also handles NFC tags. */
+   A blank trigger field means any tag; a tag ID binds one tag. The
+   tapped tag's ID is written to the Run log. The system may show a
+   chooser if another app handles NFC tags too. */
 class NfcActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

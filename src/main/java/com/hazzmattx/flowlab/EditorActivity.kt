@@ -51,8 +51,8 @@ class EditorActivity : Activity() {
     private var flowId: String? = null
     private var kind = "macro"
     private val steps = mutableListOf<Step>()
-    /* Tree collapse: start indices of If/While blocks currently collapsed
-       in this editor session only. Not saved with the flow. */
+    /* Collapsed If/While blocks, by start index.
+       Editor session only, not saved with the flow. */
     private val collapsedBlocks = mutableSetOf<Int>()
 
     fun builtins(): List<String> {
@@ -71,9 +71,7 @@ class EditorActivity : Activity() {
         return if (ThemePrefs.isDark(this)) Color.parseColor("#BA68C8") else Color.parseColor("#7B1FA2")
     }
 
-    /* Colorcoding: any ${name} token in a label or text field is drawn
-       in the variable colour, so variables stand out from regular words
-       at a glance, like syntax highlighting in code. */
+    /* ${name} tokens are drawn in the variable colour, so they stand out from plain words. */
     fun colorVariableTokens(text: String, step: Step? = null): android.text.SpannableStringBuilder {
         val builder = android.text.SpannableStringBuilder(text)
         val tokenRegex = Regex("\\$\\{[^}]+\\}")
@@ -98,10 +96,8 @@ class EditorActivity : Activity() {
                 }
             }
         }
-        /* Conditional keywords, in purple and bold, distinct from blue
-           variables and green user variables. Longest phrases first, so
-           "If" inside "Else If" / "End If" is not coloured twice, and
-           this also colours the keyword inside [in: If ...] scope tags. */
+        /* Conditional keywords in purple bold, longest phrases first,
+           so "If" inside "Else If" is not coloured twice. */
         val colouredRanges = mutableListOf<IntRange>()
         for (phrase in listOf("Else If", "End If", "End While", "End Repeat", "Repeat", "While", "If", "Else")) {
             val phraseRegex = Regex("\\b" + Regex.escape(phrase) + "\\b")
@@ -154,14 +150,9 @@ class EditorActivity : Activity() {
         return (builtins + created.sorted()).distinct()
     }
 
-    /* Specific trigger for variable-name fields: nothing pops up while
-       typing a regular word. Only tapping Pick variable opens the list,
-       and picking one replaces the whole field with that name.
-       Free-text fields are different: there the trigger is typing ${,
-       see VariableTokenizer below, so regular words never trigger either.
-       Coloured picker, used by both Pick and Insert: built-in variables
-       in blue, variables you created in green, with section headers, so
-       the colour tells you at a glance where a variable comes from. */
+    /* Variable-name fields: nothing pops up while typing; Pick variable
+       replaces the whole field. Free-text fields trigger on typing ${.
+       Built-ins show in blue, your variables in green. */
     private fun showColoredVariableDialog(edit: EditText, insertAsToken: Boolean, title: String) {
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 16, 32, 16) }
         val scroll = ScrollView(this).apply { addView(box) }
@@ -208,10 +199,8 @@ class EditorActivity : Activity() {
         }
     }
 
-    /* Coding-style autocomplete for free text: the token is whatever
-       comes after an unclosed ${, so typing "Battery is ${b" shows
-       battery, bluetooth, etc., and picking one completes it to ${battery}.
-       Plain text with no open ${ shows no dropdown at all. */
+    /* Autocomplete for free text: the token is whatever follows an unclosed
+       ${, so typing "Battery is ${b" offers battery, bluetooth, and so on. */
     private class VariableTokenizer : MultiAutoCompleteTextView.Tokenizer {
         override fun findTokenStart(text: CharSequence, cursor: Int): Int {
             var i = cursor
@@ -248,12 +237,8 @@ class EditorActivity : Activity() {
         return view
     }
 
-    /* Across-the-board variable picker: for any free-text field where
-       ${name} is substituted at run time, tapping this button opens the
-       same variable list as the autocomplete, and inserts ${name} at the
-       cursor, so you never have to type the ${} syntax from memory.
-       An AutoCompleteTextView alone cannot do this for free text, because
-       it tries to filter the whole field, not just the token after ${. */
+    /* Variable picker: opens the same variable list as autocomplete and
+       inserts ${name} at the cursor, so you don't have to type the syntax. */
     private fun showVariablePicker(edit: EditText) {
         showColoredVariableDialog(edit, true, "Insert variable")
     }
@@ -565,8 +550,7 @@ class EditorActivity : Activity() {
             }
         }
         var skipUntil = -1
-        /* Stack of the If conditions currently open, so a step can say which
-           statement it actually belongs to, instead of just being indented. */
+        /* Stack of open If conditions, so each step knows which statement it belongs to. */
         val openIfs = mutableListOf<String>()
         for ((index, step) in steps.withIndex()) {
             if (index < skipUntil) continue
@@ -601,8 +585,7 @@ class EditorActivity : Activity() {
                 if (openIfs.isNotEmpty()) openIfs[openIfs.size - 1] = stepLabel(step) else openIfs.add(stepLabel(step))
             }
             if (isCollapsed) {
-                /* Undo the depth/scope push above, hide everything up to and
-                   including the matching End, and show the header only. */
+                /* Collapse: undo the push above, hide through the matching End, show the header only. */
                 depth = maxOf(0, depth - 1)
                 if (openIfs.isNotEmpty()) openIfs.removeAt(openIfs.size - 1)
                 skipUntil = (matchEnd[index] ?: index) + 1
@@ -637,8 +620,7 @@ class EditorActivity : Activity() {
                 setOnClickListener { showStepMenu(index) }
             }
             row.addView(handle); row.addView(label); row.addView(stepMenu); row.addView(del)
-            /* Long-press and drag: drop in the top half of a row moves above
-               it, drop in the bottom half moves below it. No button tapping. */
+            /* Long-press and drag: drop in the top half moves above the row, bottom half below it. */
             row.setOnLongClickListener { v -> startStepDrag(v, targetIndex); true }
             handle.setOnLongClickListener { v -> startStepDrag(row, targetIndex); true }
             label.setOnLongClickListener { v -> startStepDrag(row, targetIndex); true }
@@ -717,9 +699,7 @@ class EditorActivity : Activity() {
     }
 
     private fun showStepPicker() {
-        /* Coloured picker: conditional steps in purple bold, like in the
-           step list, so If / Else / While / Repeat / End stand out while
-           choosing. Search field filters the list live. */
+        /* Step picker: conditional steps in purple bold. The search field filters the list live. */
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 16, 32, 16) }
         val search = EditText(this).apply { hint = "Search steps..." }
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -1036,9 +1016,8 @@ class EditorActivity : Activity() {
     }
 
     private fun showIfInputs(stepType: String = "if") {
-        /* One If / While step, with operator as a field inside it, not five separate steps.
-           The variable field does NOT auto-pop up: tap Pick variable to open
-           the list of built-ins plus variables created in any flow. */
+        /* One If / While step, with the operator as a field inside it.
+           Tap Pick variable to choose one; the list does not pop up on its own. */
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 16, 32, 16) }
         val varEdit = EditText(this).apply { hint = "Variable, e.g. battery, charging, flashlight, wifi, or your own variable"; setTextColor(variableColor()) }
         val spinner = android.widget.Spinner(this).apply {
@@ -1089,10 +1068,8 @@ class EditorActivity : Activity() {
             else -> "Value" to null
         }
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 16, 32, 16) }
-        /* Trigger-specific, never auto on a regular word:
-           variable-name fields get a Pick variable button, free-text fields
-           get coding autocomplete only after typing ${, plus an Insert
-           variable button as a manual trigger. */
+        /* Triggers are manual, never automatic on a regular word: Pick variable
+           for name fields, ${ plus an Insert button for free-text fields. */
         val isVarName1 = type == "set_var" || type == "ask_input" || type == "get_time" || type == "stop_if" || type == "get_location" || type == "get_clipboard"
         val e1: EditText = if (type == "message" || type == "notify" || type == "speak" || type == "open_url" || type == "http_get" || type == "copy_clipboard" || type == "share_text") codingEdit(p1Label) else EditText(this).apply { hint = p1Label }
         if (isVarName1) e1.setTextColor(variableColor())

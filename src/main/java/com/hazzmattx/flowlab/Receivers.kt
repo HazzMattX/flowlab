@@ -99,9 +99,8 @@ class WifiReceiver : FlowReceiver() {
         val prevConnected = prefs.getString("wifi_state_connected", null)?.toBoolean()
         val prevSsid = prefs.getString("wifi_state_ssid", null)
         prefs.edit().putString("wifi_state_connected", connected.toString()).putString("wifi_state_ssid", ssid).apply()
-        /* Only fire on a transition, not on every network-state broadcast.
-           SSID trigger: fire when the SSID changes to the wanted one, or on a
-           fresh connect to that SSID (reconnecting to the same network). */
+        /* Fire only on a transition, not on every broadcast. An SSID trigger
+           fires when the SSID changes to the wanted one, or on a fresh connect. */
         val fireSsid = connected && ssid.isNotEmpty() &&
             (prevSsid != ssid || (prevConnected != null && prevConnected != connected))
         val trigger = if (prevConnected == null || prevConnected == connected) {
@@ -112,10 +111,9 @@ class WifiReceiver : FlowReceiver() {
             "wifi_disconnected"
         }
         if (trigger == null && !fireSsid) return
-        /* One goAsync() per onReceive: goAsync() can only be called once —
-           a second call returns null, and finish() on that null crashed on every Wi-Fi connect with an SSID.
-           Run both the connect/disconnect flows and the SSID flows in the
-           single thread owned by that one PendingResult. */
+        /* One goAsync() per onReceive: a second call returns null, and finish()
+           on that null crashed on every Wi-Fi connect. All work for the
+           broadcast runs in the single thread from that one call. */
         val pending = goAsync()
         Thread {
             try {
@@ -176,10 +174,8 @@ class UnlockReceiver : FlowReceiver() {
     }
 }
 
-/* Headphones: wired via ACTION_HEADSET_PLUG, Bluetooth audio devices
-   via ACL connect/disconnect. Only fires on a change of connected
-   state, like WifiReceiver. One goAsync() per onReceive, all work in
-   the single thread from that call. */
+/* Headphones: wired via ACTION_HEADSET_PLUG, Bluetooth via ACL
+   connect/disconnect. Fires only on a change of connected state. */
 class HeadphonesReceiver : FlowReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         val connected: Boolean? = when (intent.action) {

@@ -26,10 +26,8 @@ import java.util.UUID
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/* One step. This is the shared building block.
-   p1 and p2 mean different things per type, see stepLabel() and Engine.
-   disabled: a step switched off in the editor without deleting it. The
-   Engine skips disabled action steps; old saved steps load as enabled. */
+/* One step, the shared building block. p1 and p2 mean different things
+   per type; disabled steps are skipped without being deleted. */
 data class Step(val type: String, val p1: String, val p2: String, val op: String = "", val disabled: Boolean = false) {
     fun toJson(): JSONObject {
         val o = JSONObject()
@@ -222,10 +220,8 @@ fun isDeviceOwner(ctx: Context): Boolean {
     }
 }
 
-/* kind is "macro" or "automation". Both use the exact same Step list
-   and the exact same Engine. Only the way they start differs:
-   macros start when you tap them, automations start on a trigger.
-   Old saved flows with kind "shortcut" are migrated to "macro" on load. */
+/* kind is "macro" or "automation". Both use the same Step list and Engine;
+   only the way they start differs. Old "shortcut" flows load as "macro". */
 data class Flow(
     val id: String,
     val kind: String,
@@ -265,11 +261,9 @@ data class Flow(
             }
             val rawKind = o.optString("kind", "macro")
             val kind = if (rawKind == "shortcut") "macro" else rawKind
-            /* Address fix: old flows used locName for the address typed for lookup,
-               which then showed up on the card. If locName looks like a full address
-               (long, or contains a number and a comma) and there is no separate
-               address field yet, move it to locAddress and leave the card label blank,
-               so the card shows a generic "location" instead of the address. */
+            /* Old flows stored the lookup address in locName, which showed on the card.
+               If locName looks like a full address, move it to locAddress so the card
+               stays generic. */
             var rawLocName = o.optString("locName", "")
             var rawLocAddress = o.optString("locAddress", "")
             val looksLikeAddress = rawLocAddress.isEmpty() && (
@@ -417,10 +411,8 @@ object Engine {
         return out
     }
 
-    /* Text-to-speech: speak the given text, waiting until it finishes or
-       60 seconds pass, whichever comes first, then shut the engine down.
-       If there is no TTS engine on the device, fail fast instead of waiting
-       60 seconds and then logging success. */
+    /* Speak the text, waiting until it finishes or 60 seconds pass, then shut
+       the engine down. With no TTS engine on the device, fail fast. */
     private fun speakText(ctx: Context, text: String): Boolean {
         if (text.isEmpty()) return false
         return try {
@@ -461,9 +453,8 @@ object Engine {
         run(ctx, flow, onLog, null, 0)
     }
 
-    /* Overload used by Run another flow: the child starts with a copy of
-       the parent's variables and returns its variables, so the parent
-       sees what the child set. Depth guards against runaway recursion. */
+    /* Run another flow: the child starts with a copy of the parent's variables
+       and returns its own, so the parent sees what the child set. Depth is capped. */
     fun run(ctx: Context, flow: Flow, onLog: (String) -> Unit, initialVars: Map<String, String>?, depth: Int): MutableMap<String, String> {
         val emit: (String) -> Unit = { line -> try { LogStore.add(ctx, line) } catch (e: Exception) { }; onLog(line) }
         val onLog = emit
@@ -474,14 +465,12 @@ object Engine {
         vars["date"] = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(nowDate)
         vars["hour"] = SimpleDateFormat("HH", Locale.US).format(nowDate)
         vars["minute"] = SimpleDateFormat("mm", Locale.US).format(nowDate)
-        /* Flashlight is a built-in too, so If can branch on its current state:
-           If flashlight == on, turn it off, Else turn it on. Value is "on"/"off",
-           from the last state Flow set (Android has no direct torch query). */
+        /* Flashlight is a built-in too, so If can branch on it. The value is
+           "on"/"off", from the last state Flow set. */
         vars["flashlight"] = if (ctx.getSharedPreferences("flowlab", Context.MODE_PRIVATE).getBoolean("flashlight_on", false)) "on" else "off"
-        /* Other toggle states a regular app can actually read. Each is wrapped
-           so a missing permission just leaves that variable unset, instead of
-           breaking the whole run. Values are on/off, except ringer which is
-           normal/vibrate/silent. */
+        /* Other toggle states a regular app can read. A missing permission leaves
+           that variable unset instead of breaking the run. Values are on/off,
+           except ringer: normal/vibrate/silent. */
         try {
             val am = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
             vars["ringer"] = when (am.ringerMode) {
@@ -530,17 +519,14 @@ object Engine {
         } catch (e: Exception) {
         }
         onLog("Running: " + flow.name)
-        /* If-stack: each frame holds the currently active branch and whether
-           any branch in this If/Else If/Else chain has already matched. That
-           is what allows a chain with more than two branches: once one branch
-           matches, later Else If branches in the same chain are skipped, and
-           Else only runs if none matched. Nesting works because the active
-           check ANDs all frames together. */
+        /* If-stack: each frame holds the active branch and whether any branch
+           in the chain has matched. Once one matches, later Else If branches
+           are skipped and Else runs only if none did. Nesting works because
+           the active check ANDs all frames together. */
         class IfFrame(var currentActive: Boolean, var matched: Boolean)
         val stack = mutableListOf<IfFrame>()
-        /* While-stack: each frame remembers where its While step lives, so
-           End While can jump back to it and re-check the condition. A cap
-           of 100 iterations stops an infinite loop from hanging a run. */
+        /* While-stack: each frame remembers where its While step lives, so End
+           While can jump back and re-check. Capped at 100 iterations. */
         class WhileFrame(var startIndex: Int, var count: Int)
         val whileStack = mutableListOf<WhileFrame>()
         class RepeatFrame(var startIndex: Int, var total: Int, var done: Int)
@@ -588,9 +574,8 @@ object Engine {
                 step.type == "if_gt" -> ">"
                 else -> "<"
             }
-            /* Time values like 18:30 are text, not numbers. If both sides look
-               like HH:mm, compare minutes since midnight, so If time > 18:00
-               actually works, and If time == 7:00 matches 07:00. */
+            /* HH:mm values are text, not numbers. If both sides look like HH:mm,
+               compare minutes since midnight, so time > 18:00 works. */
             val actualMinutes = parseTimeMinutes(actual)
             val expectedMinutes = parseTimeMinutes(expected)
             if (actualMinutes != null && expectedMinutes != null) {
@@ -731,10 +716,8 @@ object Engine {
                     index++
                     continue
                 }
-                /* Disabled steps are skipped without deleting them. Block
-                   headers (If / While / Repeat and their Ends) are handled
-                   above, before this point, so disabling one of those does
-                   not break the block matching for the steps around it. */
+                /* Disabled steps are skipped. Block headers are handled above, so
+                   disabling one does not break matching for the steps around it. */
                 if (step.disabled) {
                     onLog("Step " + (index + 1) + ": skipped, step is disabled")
                     index++
@@ -768,8 +751,7 @@ object Engine {
                         onLog("Step " + (index + 1) + ": waited " + sec + "s")
                     }
                     "open_url" -> {
-                        /* Spaces in a substituted URL are not valid in a link,
-                           so encode them; plain URLs without spaces are unchanged. */
+                        /* Spaces in a substituted URL are encoded; plain URLs are unchanged. */
                         val url = substitute(step.p1, vars).replace(" ", "%20")
                         val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -910,10 +892,8 @@ object Engine {
                         onLog("Step " + (index + 1) + ": Flashlight " + step.p1 + ", result=" + ok)
                     }
                     "toggle_flashlight" -> {
-                        /* Android has no direct "is torch on?" query, so Flow
-                           remembers the last state it set and flips that. The
-                           on/off step above keeps this in sync, so a macro
-                           using only Flow toggles stays correct. */
+                        /* Android has no "is torch on?" query, so Flow remembers the last state
+                           it set and flips that. The on/off step above keeps this in sync. */
                         val prefs = ctx.getSharedPreferences("flowlab", Context.MODE_PRIVATE)
                         val next = !prefs.getBoolean("flashlight_on", false)
                         val ok = setFlashlight(ctx, next)
@@ -1109,9 +1089,8 @@ object Engine {
                         onLog("Step " + (index + 1) + ": Comment")
                     }
                     "choose_list" -> {
-                        /* Same foreground rule as Ask for input: a dialog
-                           needs an Activity. Background/automation runs
-                           skip gracefully instead of crashing. */
+                        /* A dialog needs an Activity, so background runs skip this step instead
+                           of crashing, same as Ask for input. */
                         val activity = ctx as? android.app.Activity
                         val options = step.p2.lines().map { substitute(it, vars) }.filter { it.isNotEmpty() }
                         if (options.isEmpty()) {
@@ -1138,9 +1117,8 @@ object Engine {
                         }
                     }
                     "get_clipboard" -> {
-                        /* Android 10+ only lets the foreground app read the
-                           clipboard, so a background run may get nothing.
-                           That is logged, not treated as a failure. */
+                        /* Android 10+ only lets the foreground app read the clipboard, so a
+                           background run may get nothing. That is logged, not a failure. */
                         val text = try {
                             val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                             val clip = cm.primaryClip
@@ -1239,9 +1217,8 @@ object Engine {
                         }
                     }
                     "file_text" -> {
-                        /* Internal storage only: Flow's own filesDir, no
-                           file picker, no storage permission. The name is
-                           flattened so a step cannot escape into other dirs. */
+                        /* Internal storage only: Flow's own filesDir, no picker, no permission.
+                           The name is flattened so a step cannot escape into other folders. */
                         val name = step.p2.substringAfterLast("/").substringAfterLast("\\").trim()
                         if (name.isEmpty() || name == "." || name == "..") {
                             onLog("Step " + (index + 1) + ": File step needs a file name")
@@ -1543,8 +1520,8 @@ object Scheduler {
         scheduleAlarm(ctx, flow, cal!!.timeInMillis, flow.id.hashCode() + if (sunrise) 1001 else 1002)
     }
 
-    /* NOAA-style solar position: returns the sunrise/sunset time for the
-       given date, or null when the sun never rises/sets that day. */
+    /* Sunrise/sunset time for the given date, via NOAA-style solar
+       position. Null when the sun never rises or sets that day. */
     fun solarCalendar(lat: Double, lng: Double, sunrise: Boolean, date: Calendar): Calendar? {
         return try {
             val n = date.get(Calendar.DAY_OF_YEAR)
@@ -1590,10 +1567,9 @@ object Scheduler {
         }
     }
 
-    /* Interval trigger: triggerParam is "<number>:minutes" or
-       "<number>:hours", default 30 minutes. One-shot alarm, rescheduled
-       after each firing by TimeReceiver, like the time trigger. Android
-       battery optimization can delay these, so timing is not exact. */
+    /* Interval trigger: "<number>:minutes" or "<number>:hours", default 30
+       minutes. A one-shot alarm, rescheduled after each firing by
+       TimeReceiver. Timing is not exact; battery optimization can delay it. */
     fun scheduleInterval(ctx: Context, flow: Flow) {
         val parts = flow.triggerParam.split(":")
         val n = (parts.getOrNull(0)?.toLongOrNull() ?: 30L).coerceAtLeast(1L)

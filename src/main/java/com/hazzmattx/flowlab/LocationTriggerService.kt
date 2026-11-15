@@ -13,10 +13,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 
-/* Foreground location service, no Google Play Services.
-   Uses Android LocationManager (GPS + network) only, so it works degoogled.
-   It only fires on a change of inside/outside state, not on every location fix,
-   and the first fix after starting only records state, it does not fire. */
+/* Foreground location service using Android LocationManager only, no
+   Google Play Services. Fires only on inside/outside changes; the
+   first fix after starting only records state, it does not fire. */
 class LocationTriggerService : Service(), LocationListener {
     private var lm: LocationManager? = null
     private var batteryReceiver: android.content.BroadcastReceiver? = null
@@ -88,8 +87,8 @@ class LocationTriggerService : Service(), LocationListener {
     }
 
     private fun startDynamicReceivers() {
-        /* onStartCommand can run more than once; registering the same
-           receivers again would fire each matching flow twice. */
+        /* onStartCommand can run more than once; re-registering receivers
+           would fire each matching flow twice. */
         if (dynamicStarted) return
         dynamicStarted = true
         try {

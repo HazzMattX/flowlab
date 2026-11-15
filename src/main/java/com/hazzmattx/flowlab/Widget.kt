@@ -14,10 +14,10 @@ import android.widget.RemoteViews
 import android.widget.TextView
 import android.widget.Toast
 
-/* Home screen widget: one widget runs one macro (or automation) when tapped.
-   Adding a widget opens WidgetConfigActivity to pick which flow it runs.
-   The mapping appWidgetId -> flowId lives in SharedPreferences, so it
-   survives a restart, and deleting the widget clears its mapping. */
+/* Home screen widget: one widget runs one flow when tapped. Adding one
+   opens WidgetConfigActivity to pick the flow. The widget-to-flow
+   mapping lives in SharedPreferences, so it survives a restart, and
+   deleting the widget clears its mapping. */
 class FlowWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(ctx: Context, manager: AppWidgetManager, ids: IntArray) {
         for (id in ids) updateWidget(ctx, manager, id)

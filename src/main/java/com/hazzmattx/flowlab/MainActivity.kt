@@ -204,8 +204,7 @@ class MainActivity : Activity() {
                 type = "application/json"
                 putExtra(Intent.EXTRA_TITLE, "flow-export.json")
             }
-            /* Stash the JSON in a field via the intent extra path: onActivityResult
-               re-reads Store, so export always reflects the current save. */
+            /* onActivityResult re-reads Store, so export always reflects the current save. */
             startActivityForResult(intent, EXPORT_REQUEST)
         } catch (e: Exception) {
             Toast.makeText(this, "Export failed: " + (e.message ?: ""), Toast.LENGTH_LONG).show()
@@ -271,8 +270,7 @@ class MainActivity : Activity() {
     }
 
     private fun showCardMenu(flow: Flow) {
-        /* Plain list, no search box: searching between Edit / Delete /
-           Duplicate is not needed. Search stays everywhere else. */
+        /* Plain list, no search box. Search stays everywhere else. */
         val items = mutableListOf<String>()
         items.add("Edit")
         items.add("Duplicate")
@@ -326,8 +324,7 @@ class MainActivity : Activity() {
         }.show()
     }
 
-    /* Pinned launcher shortcut for one flow, distinct from the widget
-       and the Quick Settings tile. Tapping the icon runs the flow. */
+    /* Pinned launcher shortcut for one flow. Tapping the icon runs the flow. */
     private fun addHomeScreenIcon(flow: Flow) {
         if (Build.VERSION.SDK_INT < 26) {
             Toast.makeText(this, "Home-screen icons need Android 8 or newer", Toast.LENGTH_SHORT).show()
@@ -356,8 +353,7 @@ class MainActivity : Activity() {
 
     private fun refresh() {
         doStatus.text = "Device Owner: " + if (isDeviceOwner(this)) "Yes" else "No (optional, top ⋮ menu)"
-        /* Selected tab should look selected, not faded out. Both tabs stay tappable,
-           the current one is darker and bold, the other is lighter.
+        /* The selected tab looks selected: darker and bold, the other lighter.
            Dark mode uses dark greys with white / light-grey text. */
         val dark = ThemePrefs.isDark(this)
         val selectedBg = if (dark) Color.parseColor("#616161") else Color.parseColor("#BDBDBD")
@@ -389,15 +385,13 @@ class MainActivity : Activity() {
             return
         }
         for (flow in flows) {
-            /* Card: tapping the card itself runs it. The small ⋮ in the corner is edit/delete.
-               Text is left-aligned, not all-caps, and padded away from the ⋮ button,
-               so the ⋮ no longer covers the flow name. */
+            /* Tapping the card runs it; the ⋮ in the corner is edit/delete.
+               Text is left-aligned and padded away from the ⋮, so it never covers the name. */
             val card = FrameLayout(this).apply {
                 alpha = if (flow.kind == "automation" && !flow.enabled) 0.55f else 1f
             }
-            /* Name-only button. Trigger, steps, and On/Off are not shown on the
-               card at all; they live in the editor and the card's ⋮ menu.
-               A disabled automation is still dimmed, so off is still visible. */
+            /* Name only: trigger, steps, and On/Off live in the editor and the ⋮ menu.
+               A disabled automation is dimmed, so off is still visible. */
             val runBtn = Button(this).apply {
                 text = flow.name
                 textSize = 16f

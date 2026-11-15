@@ -9,8 +9,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 
-/* Reusable searchable list dialog, used by MainActivity menus, the
-   EditorActivity pickers, and WidgetConfigActivity. */
+/* Reusable searchable list dialog, used by the main menus, the
+   editor pickers, and WidgetConfigActivity. */
 object SearchablePicker {
     fun show(ctx: Context, title: String, items: List<String>, onPick: (Int) -> Unit) {
         val root = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; setPadding(32, 16, 32, 16) }
